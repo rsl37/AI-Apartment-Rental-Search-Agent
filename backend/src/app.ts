@@ -20,7 +20,19 @@ const app = express();
 
 // Enhanced security middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // We'll handle this in our custom middleware
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "example.com"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "https:"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'self'"],
+      upgradeInsecureRequests: [],
+    },
+  },
   hsts: {
     maxAge: 31536000,
     includeSubDomains: true,
