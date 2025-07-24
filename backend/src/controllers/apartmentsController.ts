@@ -41,16 +41,16 @@ export class ApartmentsController {
       };
 
       // Apply price filters
-      if (minPrice) filters.price = { ...filters.price, gte: parseInt(minPrice as string) * 100 };
-      if (maxPrice) filters.price = { ...filters.price, lte: parseInt(maxPrice as string) * 100 };
+      if (minPrice) filters.price = { ...filters.price, gte: parseInt(minPrice as string, 10) * 100 };
+      if (maxPrice) filters.price = { ...filters.price, lte: parseInt(maxPrice as string, 10) * 100 };
 
       // Apply property filters
       if (bedrooms) {
         const bedroomArray = Array.isArray(bedrooms) ? bedrooms : [bedrooms];
-        filters.bedrooms = { in: bedroomArray.map(b => parseInt(b as string)) };
+        filters.bedrooms = { in: bedroomArray.map(b => parseInt(b as string, 10)) };
       }
-      if (bathrooms) filters.bathrooms = { gte: parseInt(bathrooms as string) };
-      if (minSqft) filters.sqft = { gte: parseInt(minSqft as string) };
+      if (bathrooms) filters.bathrooms = { gte: parseInt(bathrooms as string, 10) };
+      if (minSqft) filters.sqft = { gte: parseInt(minSqft as string, 10) };
 
       // Apply location filters
       if (borough) filters.borough = borough;
