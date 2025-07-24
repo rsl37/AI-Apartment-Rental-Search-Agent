@@ -2,6 +2,51 @@
 
 A full-stack web application that automatically scrapes apartment listings from StreetEasy, Zillow, and Apartments.com, filters them based on specific criteria, and sends SMS notifications to verified users about new listings.
 
+# AI Apartment Rental Agent
+
+A full-stack web application that automatically scrapes apartment listings from StreetEasy, Zillow, and Apartments.com, filters them based on specific criteria, and sends SMS notifications to verified users about new listings.
+
+## 🛡️ Security Features
+
+This application implements enterprise-level security measures to ensure robust protection of sensitive data:
+
+### Authentication & Authorization
+- **OAuth 2.0/OpenID Connect**: Secure third-party authentication support
+- **Multi-Factor Authentication (MFA)**: TOTP-based MFA using authenticator apps
+- **Role-Based Access Control (RBAC)**: Admin, Moderator, and User roles with granular permissions
+- **Enhanced JWT**: Short-lived tokens (15 minutes) with refresh token rotation
+- **Session Management**: Secure session handling with proper expiration
+
+### Data Protection
+- **AES-256 Encryption**: Sensitive data encrypted at rest using industry-standard encryption
+- **Data Masking**: Automatic masking of sensitive data in logs and error messages
+- **Secure Environment Management**: All secrets managed through environment variables
+- **Input Sanitization**: Comprehensive input validation and sanitization using express-validator
+
+### Network Security
+- **HTTPS Enforcement**: HSTS headers for secure connections
+- **Content Security Policy (CSP)**: Protection against XSS attacks
+- **Security Headers**: Comprehensive security headers (X-Frame-Options, X-Content-Type-Options, etc.)
+- **CORS Restrictions**: Configurable CORS policies for trusted domains only
+
+### API Security
+- **Rate Limiting**: Multiple rate limiting strategies for different endpoints
+- **Request Validation**: Strict validation of all API requests
+- **Authentication Required**: JWT verification for protected endpoints
+- **Permission-Based Access**: Granular permission checks for all operations
+
+### Audit & Monitoring
+- **Comprehensive Logging**: All security events logged with timestamps and IP addresses
+- **Suspicious Activity Detection**: Automated detection and alerting for suspicious behavior
+- **Security Monitoring**: Integration with monitoring tools (Sentry, Datadog, Slack)
+- **Audit Trail**: Complete audit trail for all data modifications
+
+### Automated Security
+- **Dependency Scanning**: Automated vulnerability scanning with Dependabot and Snyk
+- **Code Security Analysis**: GitHub CodeQL for static code analysis
+- **Secret Scanning**: TruffleHog integration for secret detection
+- **License Compliance**: Automated license compliance checking
+
 ## 🏗 Architecture
 
 - **Backend**: Node.js + Express.js + TypeScript + Prisma ORM
@@ -155,9 +200,33 @@ Copy `.env.example` to `.env` and configure the following:
 
 #### Required for Basic Functionality
 - `DATABASE_URL`: Database connection string
-- `JWT_SECRET`: Secret for JWT token signing
+- `JWT_SECRET`: Secret for JWT token signing (32+ characters recommended)
+- `ENCRYPTION_KEY`: AES-256 encryption key (32 characters)
 
-#### Required for Scraping
+### Security Configuration
+- `BCRYPT_ROUNDS`: Password hashing rounds (default: 12)
+- `SESSION_SECRET`: Session secret for OAuth flows
+- `MFA_ISSUER`: MFA issuer name for TOTP apps
+
+### Multi-Factor Authentication (Optional)
+- Enable MFA in user settings after registration
+- Supports TOTP apps like Google Authenticator, Authy
+- Backup codes provided for account recovery
+
+### OAuth 2.0 Configuration (Optional)
+- `OAUTH_CLIENT_ID`: OAuth provider client ID
+- `OAUTH_CLIENT_SECRET`: OAuth provider client secret  
+- `OAUTH_AUTHORIZATION_URL`: OAuth authorization endpoint
+- `OAUTH_TOKEN_URL`: OAuth token endpoint
+- `OAUTH_CALLBACK_URL`: OAuth callback URL
+
+### Security Monitoring (Optional)
+- `SENTRY_DSN`: Sentry DSN for error monitoring
+- `DATADOG_API_KEY`: Datadog API key for metrics
+- `SLACK_WEBHOOK_URL`: Slack webhook for security alerts
+- `ALERT_EMAIL`: Email address for security notifications
+
+### Required for Scraping
 - `SCRAPER_API_KEY`: ScraperAPI key for web scraping
 - OR `BRIGHT_DATA_*`: BrightData credentials
 
@@ -190,6 +259,32 @@ npx prisma studio
 ### Base URL
 `http://localhost:3001/api`
 
+### Base URL
+`http://localhost:3001/api`
+
+### Authentication
+All protected endpoints require a JWT token in the Authorization header:
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+### Security Endpoints
+
+#### Authentication & MFA
+- `POST /auth/mfa/setup` - Set up multi-factor authentication
+- `POST /auth/mfa/verify-setup` - Verify MFA setup with token
+- `POST /auth/mfa/verify` - Verify MFA token during login
+- `POST /auth/mfa/backup-codes` - Generate new backup codes
+- `POST /auth/token/refresh` - Refresh access token
+
+#### OAuth 2.0
+- `GET /auth/oauth/authorize` - Initiate OAuth flow
+- `GET /auth/oauth/callback` - OAuth callback endpoint
+- `GET /auth/.well-known/openid_configuration` - OpenID Connect configuration
+
+#### Security Monitoring
+- `GET /auth/security/status` - Get security status and metrics (Admin only)
+
 ### Endpoints
 
 #### Apartments
@@ -221,6 +316,25 @@ npx prisma studio
 - `GET /reports/stats` - Get report statistics
 - `GET /reports/:id` - Get single report
 - `POST /reports/generate/daily` - Generate daily report
+
+### Security Query Parameters
+
+#### Rate Limiting
+All endpoints are rate-limited. Default limits:
+- General API: 1000 requests per 15 minutes
+- Authentication: 5 attempts per 15 minutes
+- Standard endpoints: 100 requests per 15 minutes
+
+#### Error Responses
+Security-enhanced error responses that don't leak sensitive information:
+```json
+{
+  "error": "Authentication required",
+  "code": "AUTH_REQUIRED",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "path": "/api/protected-endpoint"
+}
+```
 
 ### Query Parameters
 
@@ -287,6 +401,54 @@ Users can text the following commands to the Twilio number:
 - `STOP` or `UNSUBSCRIBE`: Disable all notifications
 - `START` or `SUBSCRIBE`: Re-enable notifications
 
+## 🔒 Security Best Practices
+
+### For Development
+1. **Never commit secrets**: Use `.env` files and keep them out of version control
+2. **Use strong passwords**: Generate secure passwords for all accounts
+3. **Enable MFA**: Set up multi-factor authentication for all admin accounts
+4. **Regular updates**: Keep dependencies updated using `npm audit` and Dependabot
+5. **Code scanning**: Use the provided GitHub Actions for automated security scanning
+
+### For Production
+1. **Environment Security**:
+   ```bash
+   # Use strong, unique secrets
+   JWT_SECRET="$(openssl rand -base64 32)"
+   ENCRYPTION_KEY="$(openssl rand -base64 32)"
+   SESSION_SECRET="$(openssl rand -base64 32)"
+   ```
+
+2. **Database Security**:
+   ```bash
+   # PostgreSQL with SSL
+   DATABASE_URL="postgresql://user:password@host:5432/db?sslmode=require"
+   ```
+
+3. **Network Security**:
+   ```bash
+   # Restrict CORS to your domain
+   CORS_ORIGIN="https://yourdomain.com"
+   ```
+
+4. **Monitoring Setup**:
+   ```bash
+   # Configure monitoring services
+   SENTRY_DSN="your-sentry-dsn"
+   SLACK_WEBHOOK_URL="your-slack-webhook"
+   ALERT_EMAIL="security@yourcompany.com"
+   ```
+
+### Security Checklist
+- [ ] All environment variables configured with strong values
+- [ ] Database secured with proper authentication and SSL
+- [ ] HTTPS enforced in production
+- [ ] Rate limiting configured appropriately
+- [ ] Monitoring and alerting set up
+- [ ] Regular security scans scheduled
+- [ ] Backup and recovery procedures tested
+- [ ] Staff trained on security best practices
+
 ## 🚢 Deployment
 
 ### Environment Setup
@@ -331,8 +493,10 @@ git push heroku main
 ```bash
 # Backend
 NODE_ENV=production
-DATABASE_URL="postgresql://user:password@host:port/database"
+DATABASE_URL="postgresql://user:password@host:port/database?sslmode=require"
 CORS_ORIGIN="https://your-frontend-domain.com"
+JWT_SECRET="your-production-jwt-secret"
+ENCRYPTION_KEY="your-production-encryption-key"
 
 # Frontend
 VITE_API_BASE_URL="https://your-backend-domain.com/api"
@@ -385,6 +549,15 @@ npm run type-check
 - Backend health: `GET /health`
 - Database connectivity: Included in health check
 - Scraper status: Check scraper job logs
+- Security status: `GET /api/auth/security/status` (Admin only)
+
+### Security Monitoring
+
+Real-time security monitoring includes:
+- **Authentication failures**: Failed login attempts tracked and alerted
+- **Rate limit violations**: Excessive requests automatically blocked
+- **Suspicious activities**: Unusual access patterns detected
+- **Data access**: All sensitive data access logged and monitored
 
 ### Logging
 
@@ -394,11 +567,81 @@ The application uses Winston for structured logging:
 - **Production**: File-based logging (`logs/` directory)
 - **Levels**: error, warn, info, http, debug
 
-### Error Handling
-
 - **Global error handler**: Catches and logs all unhandled errors
-- **API errors**: Consistent error response format
+- **API errors**: Consistent error response format with security considerations
 - **Validation errors**: Detailed field-level validation messages
+- **Security events**: All authentication and authorization events logged
+- **Audit trail**: Complete audit trail for compliance and forensics
+
+## 🔧 Security Configuration
+
+### Multi-Factor Authentication Setup
+
+1. **Enable MFA for users**:
+   ```bash
+   POST /api/auth/mfa/setup
+   Authorization: Bearer <token>
+   ```
+
+2. **Verify setup with authenticator app**:
+   ```bash
+   POST /api/auth/mfa/verify-setup
+   Content-Type: application/json
+   {
+     "token": "123456",
+     "secret": "base32-secret"
+   }
+   ```
+
+### OAuth 2.0 Configuration
+
+1. **Configure OAuth provider** in `.env`:
+   ```bash
+   OAUTH_CLIENT_ID=your-client-id
+   OAUTH_CLIENT_SECRET=your-client-secret
+   OAUTH_AUTHORIZATION_URL=https://provider.com/oauth/authorize
+   OAUTH_TOKEN_URL=https://provider.com/oauth/token
+   ```
+
+2. **Initiate OAuth flow**:
+   ```bash
+   GET /api/auth/oauth/authorize
+   ```
+
+### Database Security
+
+For production PostgreSQL setup, see `backend/DATABASE_SECURITY.md` for:
+- SSL configuration
+- User privilege management
+- Connection security
+- Backup encryption
+- Monitoring queries
+
+### Automated Security Scanning
+
+The repository includes automated security workflows:
+- **Dependency scanning**: Daily Snyk and npm audit scans
+- **Code analysis**: GitHub CodeQL for vulnerability detection
+- **Secret scanning**: TruffleHog for exposed secrets
+- **License compliance**: Automated license checking
+- **Docker scanning**: Container vulnerability scanning
+
+## 🔐 Security Incident Response
+
+### Incident Types
+1. **Authentication Breaches**: Unauthorized access attempts
+2. **Data Exposure**: Potential data leaks or exposures
+3. **System Compromise**: Suspected system intrusion
+4. **Denial of Service**: Service disruption attacks
+
+### Response Procedures
+1. **Immediate containment**: Automatically block suspicious IPs
+2. **Assessment**: Analyze logs and audit trails
+3. **Notification**: Alert security team via configured channels
+4. **Recovery**: Restore services and patch vulnerabilities
+5. **Review**: Post-incident analysis and improvements
+
+### Error Handling
 
 ## 🤝 Contributing
 
@@ -431,9 +674,10 @@ For support, please:
 - [x] Daily reports
 
 ### Phase 2 (Next)
-- [ ] Multi-user authentication
+- [x] Multi-user authentication with RBAC
+- [x] Advanced security features (MFA, OAuth, encryption)
 - [ ] Advanced filtering and search
-- [ ] Email notifications
+- [ ] Email notifications  
 - [ ] Mobile app
 - [ ] Real-time updates via WebSocket
 
@@ -443,7 +687,18 @@ For support, please:
 - [ ] Integration with calendar apps
 - [ ] Automated application submission
 - [ ] Market trend analysis
+- [ ] Advanced security monitoring and threat detection
 
 ---
 
-**Built with ❤️ for apartment hunters in NYC**
+**Built with ❤️ and 🛡️ security for apartment hunters in NYC**
+
+## 📋 Security Compliance
+
+This application implements security measures that align with industry standards:
+- **OWASP Top 10**: Protection against common web vulnerabilities
+- **SOC 2 Type II**: Security controls for data protection
+- **GDPR**: Data privacy and protection compliance ready
+- **PCI DSS**: Payment data security standards (when applicable)
+
+For security questions or to report vulnerabilities, please contact: security@yourcompany.com

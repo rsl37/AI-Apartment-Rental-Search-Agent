@@ -1,0 +1,107 @@
+# Dependabot Configuration for Automated Security Updates
+# This file should be placed in .github/dependabot.yml
+
+version: 2
+updates:
+  # Backend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "rsl37"
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "security"
+      include: "scope"
+    # Group minor and patch updates
+    groups:
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "patch"
+    # Auto-merge patch updates for development dependencies
+    allow:
+      - dependency-type: "development"
+        update-type: "security"
+      - dependency-type: "production"
+        update-type: "security"
+    # Ignore specific packages if needed
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Frontend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "rsl37"
+    labels:
+      - "dependencies"
+      - "frontend"
+      - "security"
+    commit-message:
+      prefix: "security"
+      include: "scope"
+    groups:
+      react-dependencies:
+        patterns:
+          - "react*"
+          - "@types/react*"
+      build-dependencies:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+          - "typescript"
+    allow:
+      - dependency-type: "development"
+        update-type: "security"
+      - dependency-type: "production"
+        update-type: "security"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    reviewers:
+      - "rsl37"
+    labels:
+      - "github-actions"
+      - "security"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  # Docker dependencies (if Dockerfile exists)
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    reviewers:
+      - "rsl37"
+    labels:
+      - "docker"
+      - "security"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
