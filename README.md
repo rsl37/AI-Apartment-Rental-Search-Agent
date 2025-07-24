@@ -1,6 +1,6 @@
 # AI Apartment Rental Agent
 
-A full-stack web application that automatically scrapes apartment listings from StreetEasy, Zillow, and Apartments.com, filters them based on specific criteria, and sends SMS notifications to verified users about new listings.
+A full-stack web application that automatically scrapes apartment listings from StreetEasy, Zillow, Apartments.com, Redfin, and Trulia, filters them based on specific criteria, and sends SMS notifications to verified users about new listings.
 
 ## 🏗 Architecture
 
@@ -247,7 +247,7 @@ Supported filters:
 
 The application runs a daily scraping job at 6:00 AM UTC that:
 
-1. **Scrapes** apartment listings from StreetEasy, Zillow, and Apartments.com
+1. **Scrapes** apartment listings from StreetEasy, Zillow, Apartments.com, Redfin, and Trulia
 2. **Filters** results based on the specified criteria
 3. **Updates** the database with new and updated listings
 4. **Generates** a daily report with statistics and insights

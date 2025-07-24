@@ -131,7 +131,7 @@ export class ScraperJob {
           resultCount: 0,
           duration: Date.now() - startTime,
           success: false,
-          errorMessage: error.message,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
         },
       });
     } finally {
@@ -183,7 +183,7 @@ export class ScraperJob {
           highestPrice: Math.round(highestPrice),
           summary,
           details: {
-            scrapingSources: ['streeteasy', 'zillow', 'apartments'],
+            scrapingSources: ['streeteasy', 'zillow', 'apartments', 'redfin', 'trulia'],
             newApartments: newApartmentIds,
             updatedApartments: updatedApartmentIds,
             priceRange: {

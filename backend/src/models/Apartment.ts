@@ -21,7 +21,7 @@ export interface ApartmentFilter {
 
 export interface ApartmentCreateInput {
   externalId: string;
-  source: 'streeteasy' | 'zillow' | 'apartments';
+  source: 'streeteasy' | 'zillow' | 'apartments' | 'redfin' | 'trulia';
   url: string;
   title: string;
   address: string;
