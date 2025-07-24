@@ -106,7 +106,7 @@ export class NotificationsController {
 
       const total = await prisma.notification.count({ where: { userId } });
 
-      const formattedStats = {
+      const formattedStats: any = {
         total,
         pending: stats.find(s => s.status === 'pending')?._count.status || 0,
         sent: stats.find(s => s.status === 'sent')?._count.status || 0,

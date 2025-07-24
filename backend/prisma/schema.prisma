@@ -41,6 +41,7 @@ model Apartment {
   price           Int      // Monthly rent in cents
   brokerFee       Int?     // Broker fee in cents
   securityDeposit Int?     // Security deposit in cents
+  isNoFee         Boolean  @default(false) // No broker fee apartment
   
   // Property details
   bedrooms        Int      @default(0) // 0 for studio
@@ -113,7 +114,13 @@ model SearchLog {
 model Report {
   id            String   @id @default(cuid())
   date          DateTime @default(now())
-  type          String   @default("daily") // "daily", "weekly", "custom"
+  type          String   @default("daily") // "daily", "weekly", "custom", "imported"
+  
+  // Import metadata
+  source        String?  // "manual", "automated", "csv", "json"
+  filename      String?  // Original filename if imported
+  importStatus  String   @default("completed") // "pending", "processing", "completed", "failed"
+  importErrors  Json     @default("[]") // Array of error messages
   
   // Summary stats
   totalListings      Int @default(0)

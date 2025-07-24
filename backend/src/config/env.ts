@@ -40,7 +40,16 @@ export const config = {
   // JWT
   jwt: {
     secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    expiresIn: process.env.JWT_EXPIRES_IN || '15m', // Shorter for security
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+  },
+  
+  // Security
+  security: {
+    encryptionKey: process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'default-encryption-key-change-in-production',
+    bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12'),
+    sessionSecret: process.env.SESSION_SECRET || 'session-secret-change-in-production',
+    mfaIssuer: process.env.MFA_ISSUER || 'AI Apartment Rental Agent',
   },
   
   // Cron Jobs

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import reportsController from '../controllers/reportsController';
+import reportsController, { upload } from '../controllers/reportsController';
 
 const router = Router();
 
@@ -12,6 +12,9 @@ router.get('/latest', reportsController.getLatestDailyReport.bind(reportsControl
 // GET /api/reports/stats - Get report statistics
 router.get('/stats', reportsController.getReportStats.bind(reportsController));
 
+// GET /api/reports/:id/status - Get import status for a report
+router.get('/:id/status', reportsController.getImportStatus.bind(reportsController));
+
 // GET /api/reports/:id - Get single report
 router.get('/:id', reportsController.getReport.bind(reportsController));
 
@@ -20,5 +23,11 @@ router.post('/', reportsController.createReport.bind(reportsController));
 
 // POST /api/reports/generate/daily - Generate daily report
 router.post('/generate/daily', reportsController.generateDailyReport.bind(reportsController));
+
+// POST /api/reports/import - Import daily report from CSV/JSON file
+router.post('/import', upload.single('file'), reportsController.importDailyReport.bind(reportsController));
+
+// POST /api/reports/process - Process daily report data (for automated systems)
+router.post('/process', reportsController.processDailyReportData.bind(reportsController));
 
 export default router;

@@ -1,9 +1,35 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { ReportCreateInput } from '../models/Report';
+import ReportImportUtils, { ImportValidationResult } from '../utils/reportImportUtils';
+import DatabaseSyncService from '../services/databaseSyncService';
 import logger from '../config/logger';
+import multer from 'multer';
 
 const prisma = new PrismaClient();
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['text/csv', 'application/json', 'text/plain'];
+    const allowedExtensions = ['.csv', '.json'];
+    
+    const hasValidType = allowedTypes.includes(file.mimetype);
+    const hasValidExtension = allowedExtensions.some(ext => file.originalname.toLowerCase().endsWith(ext));
+    
+    if (hasValidType || hasValidExtension) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only CSV and JSON files are allowed.'));
+    }
+  },
+});
+
+export { upload };
 
 export class ReportsController {
   // Get all reports
@@ -231,6 +257,294 @@ export class ReportsController {
     } catch (error) {
       logger.error('Error fetching report stats:', error);
       res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Import daily report from CSV/JSON file
+  async importDailyReport(req: Request, res: Response) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const { markInactive = 'false' } = req.body;
+      const markOthersInactive = markInactive === 'true';
+      const fileContent = req.file.buffer.toString('utf-8');
+      const filename = req.file.originalname;
+      const fileType = filename.toLowerCase().endsWith('.csv') ? 'csv' : 'json';
+
+      logger.info(`Starting import of ${filename} (${fileType})`);
+
+      // Create report record with pending status
+      const report = await prisma.report.create({
+        data: {
+          date: new Date(),
+          type: 'imported',
+          source: fileType,
+          filename,
+          importStatus: 'processing',
+          summary: `Importing ${filename}...`,
+        },
+      });
+
+      try {
+        // Parse the file
+        let importResult: ImportValidationResult;
+        if (fileType === 'csv') {
+          importResult = await ReportImportUtils.parseCSV(fileContent);
+        } else {
+          importResult = await ReportImportUtils.parseJSON(fileContent);
+        }
+
+        // Update report with parsing results
+        const importSummary = ReportImportUtils.generateImportSummary(importResult, filename, fileType);
+        
+        if (importResult.valid.length === 0) {
+          await prisma.report.update({
+            where: { id: report.id },
+            data: {
+              importStatus: 'failed',
+              importErrors: importResult.errors,
+              summary: `Import failed: No valid records found in ${filename}`,
+              details: { importSummary, errors: importResult.errors },
+            },
+          });
+
+          return res.status(400).json({
+            error: 'No valid records found in file',
+            importResult,
+            importSummary,
+          });
+        }
+
+        // Sync with database
+        const syncResult = await DatabaseSyncService.syncApartments(
+          importResult.valid,
+          report.id,
+          markOthersInactive
+        );
+
+        // Send notifications for new no-fee apartments
+        await DatabaseSyncService.sendNoFeeNotifications(
+          syncResult.newApartments,
+          report.id
+        );
+
+        // Calculate statistics
+        const totalListings = await prisma.apartment.count({ where: { isActive: true } });
+        const apartments = await prisma.apartment.findMany({
+          where: { isActive: true },
+          select: { price: true },
+        });
+
+        const prices = apartments.map(apt => apt.price);
+        const averagePrice = prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 0;
+        const sortedPrices = prices.sort((a, b) => a - b);
+        const medianPrice = sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length / 2)] : 0;
+        const lowestPrice = sortedPrices.length > 0 ? sortedPrices[0] : 0;
+        const highestPrice = sortedPrices.length > 0 ? sortedPrices[sortedPrices.length - 1] : 0;
+
+        // Generate final summary
+        const syncSummary = DatabaseSyncService.generateSyncSummary(syncResult, filename);
+        const finalSummary = `${importSummary}\n\n${syncSummary}`;
+
+        // Update report with final results
+        const updatedReport = await prisma.report.update({
+          where: { id: report.id },
+          data: {
+            importStatus: 'completed',
+            importErrors: [...importResult.errors, ...syncResult.errors],
+            totalListings,
+            newListings: syncResult.stats.newCount,
+            updatedListings: syncResult.stats.updatedCount,
+            removedListings: syncResult.stats.removedCount,
+            averagePrice: Math.round(averagePrice),
+            medianPrice: Math.round(medianPrice),
+            lowestPrice: Math.round(lowestPrice),
+            highestPrice: Math.round(highestPrice),
+            summary: finalSummary,
+            details: {
+              importSummary,
+              syncSummary,
+              importResult,
+              syncResult,
+              filename,
+              fileType,
+              markOthersInactive,
+            },
+            listings: [...syncResult.newApartments, ...syncResult.updatedApartments],
+          },
+        });
+
+        logger.info(`Import completed for ${filename}: ${syncResult.stats.newCount} new, ${syncResult.stats.updatedCount} updated`);
+
+        res.status(201).json({
+          report: {
+            ...updatedReport,
+            averagePrice: updatedReport.averagePrice / 100,
+            medianPrice: updatedReport.medianPrice / 100,
+            lowestPrice: updatedReport.lowestPrice / 100,
+            highestPrice: updatedReport.highestPrice / 100,
+          },
+          importResult,
+          syncResult,
+          summary: finalSummary,
+        });
+
+      } catch (error) {
+        // Update report with error status
+        await prisma.report.update({
+          where: { id: report.id },
+          data: {
+            importStatus: 'failed',
+            importErrors: [{ error: error instanceof Error ? error.message : 'Unknown error' }],
+            summary: `Import failed for ${filename}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        });
+
+        throw error;
+      }
+
+    } catch (error) {
+      logger.error('Error importing daily report:', error);
+      res.status(500).json({ 
+        error: 'Import failed',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  // Get import status for a report
+  async getImportStatus(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const report = await prisma.report.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          filename: true,
+          importStatus: true,
+          importErrors: true,
+          summary: true,
+          details: true,
+          newListings: true,
+          updatedListings: true,
+          removedListings: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!report) {
+        return res.status(404).json({ error: 'Report not found' });
+      }
+
+      res.json(report);
+    } catch (error) {
+      logger.error('Error fetching import status:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Process daily report manually (for automated systems)
+  async processDailyReportData(req: Request, res: Response) {
+    try {
+      const { apartments, source = 'api', markInactive = false } = req.body;
+
+      if (!Array.isArray(apartments) || apartments.length === 0) {
+        return res.status(400).json({ error: 'Invalid apartments data' });
+      }
+
+      logger.info(`Processing ${apartments.length} apartments from ${source}`);
+
+      // Create report record
+      const report = await prisma.report.create({
+        data: {
+          date: new Date(),
+          type: 'imported',
+          source,
+          importStatus: 'processing',
+          summary: `Processing ${apartments.length} apartments from ${source}...`,
+        },
+      });
+
+      try {
+        // Validate apartments data
+        const importResult = await ReportImportUtils.parseJSON(JSON.stringify(apartments));
+
+        if (importResult.valid.length === 0) {
+          await prisma.report.update({
+            where: { id: report.id },
+            data: {
+              importStatus: 'failed',
+              importErrors: importResult.errors,
+              summary: `Processing failed: No valid records from ${source}`,
+            },
+          });
+
+          return res.status(400).json({
+            error: 'No valid records found',
+            errors: importResult.errors,
+          });
+        }
+
+        // Sync with database
+        const syncResult = await DatabaseSyncService.syncApartments(
+          importResult.valid,
+          report.id,
+          markInactive
+        );
+
+        // Send notifications
+        await DatabaseSyncService.sendNoFeeNotifications(
+          syncResult.newApartments,
+          report.id
+        );
+
+        // Update report
+        const summary = DatabaseSyncService.generateSyncSummary(syncResult, source);
+        await prisma.report.update({
+          where: { id: report.id },
+          data: {
+            importStatus: 'completed',
+            importErrors: syncResult.errors,
+            newListings: syncResult.stats.newCount,
+            updatedListings: syncResult.stats.updatedCount,
+            removedListings: syncResult.stats.removedCount,
+            summary,
+            details: { syncResult, source },
+            listings: [...syncResult.newApartments, ...syncResult.updatedApartments],
+          },
+        });
+
+        logger.info(`Processing completed for ${source}: ${syncResult.stats.newCount} new, ${syncResult.stats.updatedCount} updated`);
+
+        res.status(200).json({
+          reportId: report.id,
+          syncResult,
+          summary,
+        });
+
+      } catch (error) {
+        await prisma.report.update({
+          where: { id: report.id },
+          data: {
+            importStatus: 'failed',
+            importErrors: [{ error: error instanceof Error ? error.message : 'Unknown error' }],
+            summary: `Processing failed for ${source}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        });
+
+        throw error;
+      }
+
+    } catch (error) {
+      logger.error('Error processing daily report data:', error);
+      res.status(500).json({ 
+        error: 'Processing failed',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   }
 }

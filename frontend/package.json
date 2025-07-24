@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Frontend for AI Apartment Rental Agent",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -28,7 +29,7 @@
     "recharts": "^2.8.0",
     "react-hot-toast": "^2.4.1",
     "react-csv": "^2.2.2",
-    "jspdf": "^2.5.1",
+    "jspdf": "^3.0.1",
     "html2canvas": "^1.4.1"
   },
   "devDependencies": {
@@ -41,7 +42,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.4",
     "typescript": "^5.2.2",
-    "vite": "^4.5.0"
+    "vite": "^7.0.6"
   },
   "engines": {
     "node": ">=18.0.0"
