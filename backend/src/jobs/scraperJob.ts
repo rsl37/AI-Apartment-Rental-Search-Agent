@@ -142,8 +142,8 @@ export class ScraperJob {
   private async generateDailyReport(
     newListings: number,
     updatedListings: number,
-    newApartmentIds: string[],
-    updatedApartmentIds: string[]
+    newApartmentIds: readonly string[],
+    updatedApartmentIds: readonly string[]
   ): Promise<void> {
     try {
       // Get total active apartments
