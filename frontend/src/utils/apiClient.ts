@@ -15,10 +15,8 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // Add auth token if available
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
+    // Token is now managed via httpOnly cookies, no need to manually add it
+    // The browser will automatically include the cookie in requests
     return config
   },
   (error) => {
