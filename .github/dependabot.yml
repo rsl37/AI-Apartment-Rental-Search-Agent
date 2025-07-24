@@ -1,3 +1,16 @@
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: daily
+
 # Dependabot Configuration for Automated Security Updates
 # This file should be placed in .github/dependabot.yml
 
