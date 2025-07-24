@@ -131,7 +131,7 @@ export class ScraperJob {
           resultCount: 0,
           duration: Date.now() - startTime,
           success: false,
-          errorMessage: error.message,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
         },
       });
     } finally {

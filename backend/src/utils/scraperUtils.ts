@@ -95,7 +95,7 @@ export class ApartmentScraper {
       return {
         success: false,
         apartments: [],
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         source: 'streeteasy',
       };
     }
@@ -149,7 +149,7 @@ export class ApartmentScraper {
       return {
         success: false,
         apartments: [],
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         source: 'zillow',
       };
     }
@@ -202,7 +202,7 @@ export class ApartmentScraper {
       return {
         success: false,
         apartments: [],
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         source: 'apartments',
       };
     }
