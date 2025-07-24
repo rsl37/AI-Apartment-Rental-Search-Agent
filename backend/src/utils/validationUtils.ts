@@ -1,9 +1,11 @@
 import Joi from 'joi';
 
+const PHONE_NUMBER_REGEX = /^\+?1?[0-9]{10}$/;
+
 // User validation schemas
 export const userRegistrationSchema = Joi.object({
   phoneNumber: Joi.string()
-    .pattern(/^\+?1?[0-9]{10}$/)
+    .pattern(PHONE_NUMBER_REGEX)
     .required()
     .messages({
       'string.pattern.base': 'Phone number must be a valid US phone number',
