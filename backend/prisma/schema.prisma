@@ -1,0 +1,181 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  phoneNumber String   @unique
+  isVerified  Boolean  @default(false)
+  verificationCode String?
+  alertPrefs  Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  notifications Notification[]
+  savedApartments SavedApartment[]
+  
+  @@map("users")
+}
+
+model Apartment {
+  id              String   @id @default(cuid())
+  externalId      String   @unique // ID from source website
+  source          String   // "streeteasy", "zillow", "apartments"
+  url             String
+  title           String
+  address         String
+  neighborhood    String?
+  borough         String   @default("Manhattan")
+  latitude        Float?
+  longitude       Float?
+  
+  // Pricing
+  price           Int      // Monthly rent in cents
+  brokerFee       Int?     // Broker fee in cents
+  securityDeposit Int?     // Security deposit in cents
+  
+  // Property details
+  bedrooms        Int      @default(0) // 0 for studio
+  bathrooms       Int      @default(1)
+  sqft            Int?
+  floor           String?
+  totalFloors     String?
+  
+  // Amenities
+  isDoorman       Boolean  @default(false)
+  hasConcierge    Boolean  @default(false)
+  hasAC           Boolean  @default(false)
+  hasDishwasher   Boolean  @default(false)
+  hasElevator     Boolean  @default(false)
+  hasLaundryUnit  Boolean  @default(false)
+  hasLaundryBuilding Boolean @default(false)
+  isCatFriendly   Boolean  @default(false)
+  
+  // Availability
+  availableFrom   DateTime?
+  availableTo     DateTime?
+  
+  // Health/Safety flags
+  hasAsbestos     Boolean  @default(false)
+  hasLeadPaint    Boolean  @default(false)
+  hasBedbugs      Boolean  @default(false)
+  hasMold         Boolean  @default(false)
+  
+  // Contact info
+  contactName     String?
+  contactPhone    String?
+  contactEmail    String?
+  
+  // Metadata
+  description     String?
+  images          Json     @default("[]") // Array of image URLs
+  features        Json     @default("[]") // Array of additional features
+  
+  // Status
+  isActive        Boolean  @default(true)
+  isArchived      Boolean  @default(false)
+  lastScraped     DateTime @default(now())
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  searchLogs      SearchLog[]
+  savedApartments SavedApartment[]
+  
+  @@map("apartments")
+}
+
+model SearchLog {
+  id          String   @id @default(cuid())
+  apartmentId String
+  source      String
+  searchQuery String?
+  filters     Json     @default("{}")
+  resultCount Int      @default(0)
+  duration    Int?     // Search duration in milliseconds
+  success     Boolean  @default(true)
+  errorMessage String?
+  createdAt   DateTime @default(now())
+  
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  
+  @@map("search_logs")
+}
+
+model Report {
+  id            String   @id @default(cuid())
+  date          DateTime @default(now())
+  type          String   @default("daily") // "daily", "weekly", "custom"
+  
+  // Summary stats
+  totalListings      Int @default(0)
+  newListings        Int @default(0)
+  updatedListings    Int @default(0)
+  removedListings    Int @default(0)
+  averagePrice       Int @default(0)
+  medianPrice        Int @default(0)
+  lowestPrice        Int @default(0)
+  highestPrice       Int @default(0)
+  
+  // Content
+  summary       String?
+  details       Json   @default("{}")
+  listings      Json   @default("[]") // Array of apartment IDs
+  
+  // Export data
+  csvData       String? // CSV export data
+  pdfUrl        String? // PDF report URL
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@map("reports")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // "sms", "email", "push"
+  title       String
+  message     String
+  payload     Json     @default("{}")
+  
+  // Delivery status
+  status      String   @default("pending") // "pending", "sent", "delivered", "failed"
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  errorMessage String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notifications")
+}
+
+model SavedApartment {
+  id          String   @id @default(cuid())
+  userId      String
+  apartmentId String
+  notes       String?
+  priority    String   @default("medium") // "low", "medium", "high"
+  status      String   @default("interested") // "interested", "contacted", "viewed", "applied", "rejected"
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, apartmentId])
+  @@map("saved_apartments")
+}
