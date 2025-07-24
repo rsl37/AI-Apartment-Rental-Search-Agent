@@ -2,6 +2,7 @@
   "name": "ai-apartment-rental-agent-backend",
   "version": "1.0.0",
   "description": "Backend API for AI Apartment Rental Agent",
+  "license": "MIT",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",

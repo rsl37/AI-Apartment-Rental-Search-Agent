@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Frontend for AI Apartment Rental Agent",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
